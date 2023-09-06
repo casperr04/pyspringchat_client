@@ -5,6 +5,13 @@ Byte = {
     'NULL': '\x00'
 }
 
+class Message:
+
+    def __init__(self, author, msg_id, date, msg):
+        self.author = author
+        self.msg_id = msg_id
+        self.date = date
+        self.msg = msg
 
 class Frame:
 
@@ -44,9 +51,17 @@ class Frame:
             headers[key] = value
             i += 1
 
+        #Return body as a message class 
         # set body to None if there is no body
-        body = None if lines[i + 1] == Byte['NULL'] else lines[i + 1][:-1]
-
+        if(lines[i+1] == Byte["NULL"]):
+            body = None
+        else:
+            auth = lines[i + 1] 
+            id = lines[i + 2]
+            date = lines[i + 3]
+            msg = lines[i + 4]
+            body = Message(auth, id, date, msg)
+            
         return Frame(command, headers, body)
 
     @staticmethod
