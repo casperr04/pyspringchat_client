@@ -62,6 +62,7 @@ class Frame:
             id = lines[i + 2]
             date = lines[i + 3]
             msg = lines[i + 4]
+            msg = msg[:-1]
             body = Message(auth, id, date, msg)
 
         return Frame(command, headers, body)
