@@ -24,15 +24,15 @@ class Frame:
 
     def __str__(self):
         lines = [self.command]
-        skipContentLength = 'content-length' in self.headers
-        if skipContentLength:
+        skip_content_length = 'content-length' in self.headers
+        if skip_content_length:
             del self.headers['content-length']
 
         for name in self.headers:
             value = self.headers[name]
             lines.append("" + name + ":" + value)
 
-        if self.body is not None and not skipContentLength:
+        if self.body is not None and not skip_content_length:
             lines.append("content-length:" + str(len(self.body)))
 
         lines.append(Byte['LF'] + self.body)
