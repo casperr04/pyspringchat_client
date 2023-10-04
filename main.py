@@ -1,27 +1,27 @@
-import logging
 import sys
 import time
 import schedule
-import urllib3.exceptions
 from websocket import WebSocketConnectionClosedException
 
 import stomp_ws.auth as auth
 import logging
 import stomp_ws.config as config
+from stomp_ws import commands
 from stomp_ws.client import Client
+from stomp_ws.commands import ChannelCommands
 from stomp_ws.frame import Frame
 
 connected = False
 get_events = False
 
+
 def chat_print(frame: Frame):
     body = frame.body
     global connected
-    if not connected:
-        if body.author == 'SERVER' and body.msg == 'pong!':
-            print("Successfully connected!")
-            connected = True
-            return
+    if not connected and body.author == 'SERVER' and body.msg == 'pong!':
+        print("Successfully connected!")
+        connected = True
+        return
 
     print(f"----------------------\n"
           f"MSG:ID:{body.msg_id}\n"
@@ -32,11 +32,10 @@ def chat_print(frame: Frame):
 def event_print(frame: Frame):
     body = frame.body
     global connected
-    if not connected:
-        if body.author == 'SERVER' and body.msg == 'pong!':
-            print("Successfully connected!")
-            connected = True
-            return
+    if not connected and body.author == 'SERVER' and body.msg == 'pong!':
+        print("Successfully connected!")
+        connected = True
+        return
     if get_events:
         logging.debug(f"----------------------\n"
                       f"EVENT_TYPE:{body.msg_id}\n"
@@ -44,37 +43,7 @@ def event_print(frame: Frame):
                       f"MSG:{body.msg}\n")
 
 
-def channel_send(message, this_client):
-    this_client.send("/app/chat/1", body=message, headers={"channel": "1"})
-
-
-def disconnect(this_client):
-    channel_unsubscribe()
-    this_client.disconnect()
-    print("Goodbye!")
-    time.sleep(2)
-    if not connected:
-        print("Cannot connect!")
-
-
-def ping_command(this_client):
-    channel_send("/ping_channel", this_client)
-
-
-def exit_command():
-    disconnect(client)
-
-commands = {"/ping": ping_command, "/exit": exit_command}
-
-
-def command_handler(command: str) -> bool:
-    if command in commands:
-        commands[command](client)
-        return True
-    return False
-
 if __name__ == '__main__':
-    config_dict = config.load_config('config.ini')
     LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     config_dict = config.load_config('config.ini')
@@ -108,13 +77,17 @@ if __name__ == '__main__':
     channel_headers, channel_unsubscribe = client.subscribe(destination=f"/user/{user.username}/queue/chat/1",
                                                             headers={"channel": "1"},
                                                             callback=chat_print)
+    channel_commands = ChannelCommands(client, channel_headers, channel_unsubscribe, "/app/chat/1", 1)
 
     while True:
         try:
+            if channel_commands.disconnected:
+                exit()
             msg = input("")
-            channel_send(msg, client)
+            if not channel_commands.command_handler(msg):
+                commands.channel_send(msg, client)
         except WebSocketConnectionClosedException:
             print("Connection closed!")
         except KeyboardInterrupt:
-            disconnect(client)
+            channel_commands.disconnect()
             break
