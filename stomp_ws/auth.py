@@ -10,6 +10,14 @@ class User:
         self.id = user_id
         self.username = username
 
+    def try_token(self, token):
+        endpoint = f"{config.config.get('backendurl')}/demo/controller"
+        r = requests.get(endpoint, headers={"Authorization": f"Bearer {token}"})
+        if r.status_code != 200:
+            return False
+        else:
+            return True
+
     def login(self, password):
         endpoint = f"{config.config.get('backendurl')}/v1/auth/login"
         payload = {"username": self.username, "password": password}
