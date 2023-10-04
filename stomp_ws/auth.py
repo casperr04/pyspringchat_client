@@ -5,11 +5,12 @@ from stomp_ws import config
 
 
 class User:
-    def __init__(self, username, token=None, password=None, id=None):
+    def __init__(self, username, token=None, user_id=None):
+        self.token = token
+        self.id = user_id
         self.username = username
-        self._login(password)
 
-    def _login(self, password):
+    def login(self, password):
         endpoint = f"{config.config.get('backendurl')}/v1/auth/login"
         payload = {"username": self.username, "password": password}
         r = requests.post(endpoint, json=payload)
