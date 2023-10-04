@@ -6,11 +6,12 @@ parser = configparser.ConfigParser(allow_no_value=True)
 
 
 class Config:
-    def __init__(self, token=None, refresh=None, username=None, url=None, keep_token=None):
+    def __init__(self, token=None, refresh=None, username=None, url=None, keep_token=None, config_dict=None):
         self.token = token
         self.refresh = refresh
         self.username = username
         self.url = url
+        self.config_dict = config_dict
         self.keep_token = keep_token if isinstance(keep_token, bool) else False
 
 
