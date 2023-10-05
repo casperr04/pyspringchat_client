@@ -48,11 +48,15 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     config_dict = config.load_config('config.ini')
     user = auth.User("kacper2")
-
-    # noinspection PyBroadException
-    # Weird exception chaining shenanigans, can't catch the exception without just using the base class.
     try:
-        user.login("1234")
+        if not user.try_token(config_dict.get("token")):
+            user.login("1234")
+            config_object = config.Config(user.token, None, user.username, url='http://localhost:8080', keep_token=True)
+            config.write_config(config_object)
+            config.config_dict = config_dict = config.load_config('config.ini')
+        else:
+            user.token = config_dict.get("token")
+    # Weird exception chaining, need to catch broad exception for this
     except Exception:
         print("Unable to connect to server, aborting...")
         time.sleep(2)
