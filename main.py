@@ -85,7 +85,7 @@ if __name__ == '__main__':
                 exit()
             msg = input("")
             if not channel_commands.command_handler(msg):
-                commands.channel_send(msg, client)
+                commands.channel_send(msg)
         except WebSocketConnectionClosedException:
             print("Connection closed!")
         except KeyboardInterrupt:

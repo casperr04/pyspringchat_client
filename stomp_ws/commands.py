@@ -1,10 +1,6 @@
 from datetime import time
 
 
-def channel_send(message, this_client):
-    this_client.send("/app/chat/1", body=message, headers={"channel": "1"})
-
-
 class ChannelCommands:
     def channel_send(self, msg):
         self.client.send(self.destination, body=msg, headers={"channel": str(self.destination_id)})
