@@ -2,17 +2,19 @@ import sys
 import time
 from requests import RequestException
 from websocket import WebSocketConnectionClosedException
-
+import stomp_ws.util as util
 import stomp_ws.auth as auth
 import logging
 import stomp_ws.config as config
-from stomp_ws import commands
+from stomp_ws import commands, requests, event
 from stomp_ws.client import Client
 from stomp_ws.commands import ChannelCommands
 from stomp_ws.frame import Frame
 
 connected = False
 get_events = False
+destination_url_prefix = "/app/chat/"
+events = []
 
 
 def chat_print(frame: Frame):
@@ -151,12 +153,11 @@ if __name__ == '__main__':
 
     # noinspection PyBroadException
     try:
-        if not user.try_token(config_dict.get("token")):
-            user.login("1234")
-            config_object = config.Config(user.token, None, user.username, url='http://localhost:8080', keep_token=True)
-            config.write_config(config_object)
-            config.config_dict = config_dict = config.load_config('config.ini')
+        username = auth.try_token(config_dict.get("token"))
+        if not username:
+            user = register_or_login_menu()
         else:
+            user = auth.User(token=config_dict.get("token"), username=config_dict.get("username"))
             user.token = config_dict.get("token")
     # Weird exception chaining, need to catch broad exception for this
     except Exception:
@@ -164,15 +165,16 @@ if __name__ == '__main__':
         time.sleep(2)
         sys.exit()
 
-    config_object = config.Config(user.token, None, user.username, url='http://localhost:8080', keep_token=True)
+    config_object = config.Config(user.token, None, user.username, url='http://localhost:8080',
+                                  keep_token=True, config_dict=config_dict)
     config.write_config(config_object)
+    config_dict = config.load_config('config.ini')
     client = Client("ws://localhost:8080/chat-test", {"Authorization": f"Bearer {config_dict.get('token')}"})
     client.connect(login="kacper",
                    passcode="45C82C421EBA87C8131E220F878E4145",
                    timeout=0)
 
-    # subscribe channel (kacper2 is your username!!)
-    # returns headers and unsubscribe()
+    print(f"Logged in as {user.username}")
 
     event_headers, event_unsubscribe = client.subscribe(destination=f"/user/{user.username}/queue/event",
                                                         headers={"channel": "0"},
@@ -180,20 +182,5 @@ if __name__ == '__main__':
 
     client.send("/app/event", body="PING CHANNEL", headers={"channel": "0"})
 
-    channel_headers, channel_unsubscribe = client.subscribe(destination=f"/user/{user.username}/queue/chat/1",
-                                                            headers={"channel": "1"},
-                                                            callback=chat_print)
-    channel_commands = ChannelCommands(client, channel_headers, channel_unsubscribe, "/app/chat/1", 1)
-
-    while True:
-        try:
-            if channel_commands.disconnected:
-                exit()
-            msg = input("")
-            if not channel_commands.command_handler(msg):
-                commands.channel_send(msg)
-        except WebSocketConnectionClosedException:
-            print("Connection closed!")
-        except KeyboardInterrupt:
-            channel_commands.disconnect()
-            break
+    main_menu_commands = commands.MainCommands(client, user)
+    menu_loop()
