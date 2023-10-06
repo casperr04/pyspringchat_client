@@ -3,7 +3,7 @@ from datetime import time
 
 class ChannelCommands:
     def channel_send(self, msg):
-        self.client.send(self.destination, body=msg, headers={"channel": str(self.destination_id)})
+        self.client.send(self.destination_url, body=msg, headers={"channel": str(self.destination_id)})
 
     def disconnect(self):
         self.unsubscribe()
