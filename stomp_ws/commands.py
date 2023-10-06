@@ -7,7 +7,7 @@ class ChannelCommands:
 
     def disconnect(self):
         self.unsubscribe()
-        print("Goodbye!")
+        print("Disconnected from channel")
         self.disconnected = True
 
     def ping_command(self):
