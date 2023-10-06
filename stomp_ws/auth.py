@@ -29,6 +29,16 @@ class User:
         self.token = data.get("token")
         self.id = data.get("id")
 
+    def register(self, password):
+        endpoint = f"{config.config.get('backendurl')}/v1/auth/register"
+        payload = {"username": self.username, "password": password}
+        r = requests.post(endpoint, json=payload)
+        if r.status_code != 200:
+            raise RequestException(r.json())
+        data = json.loads(r.text)
+        self.token = data.get("token")
+        self.id = data.get("id")
+
 
 class RequestException(requests.RequestException):
     pass
