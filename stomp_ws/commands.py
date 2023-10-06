@@ -28,7 +28,7 @@ class ChannelCommands:
         self.headers = headers
         self.unsubscribe = unsubscribe
         self.destination_url = destination_url
-        self.destination_id = destination_url
+        self.destination_id = destination_id
         self.disconnected = False
         self.commands = {"/ping": self.ping_command, "/exit": self.exit_command}
 
