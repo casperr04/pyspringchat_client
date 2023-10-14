@@ -1,5 +1,4 @@
-from datetime import time
-
+from requests import exceptions
 
 class ChannelCommands:
     def channel_send(self, msg):
@@ -7,7 +6,7 @@ class ChannelCommands:
 
     def disconnect(self):
         self.unsubscribe()
-        print("Disconnected from channel")
+        print("Disconnected from channel\n")
         self.disconnected = True
 
     def ping_command(self):
@@ -23,12 +22,13 @@ class ChannelCommands:
             return True
         return False
 
-    def __init__(self, client, headers, unsubscribe, destination_url, destination_id):
+    def __init__(self, client, headers, unsubscribe, destination_url, destination_id, req):
         self.client = client
         self.headers = headers
         self.unsubscribe = unsubscribe
         self.destination_url = destination_url
         self.destination_id = destination_id
+        self.req = req
         self.disconnected = False
         self.commands = {"/ping": self.ping_command, "/exit": self.exit_command}
 
@@ -55,16 +55,19 @@ class MainCommands:
 
     def join_channel(self, destination_id):
         from main import chat_print, destination_url_prefix
+        if not self.req.check_if_in_server(destination_id):
+            raise exceptions.RequestException
+
         channel_headers, channel_unsubscribe = self.client.subscribe(
             destination=f"/user/{self.user.username}/queue/chat/{destination_id}",
             headers={"channel": str(destination_id)},
             callback=chat_print)
         channel_commands = ChannelCommands(self.client, channel_headers, channel_unsubscribe,
                                            f"{destination_url_prefix}{destination_id}",
-                                           destination_id)
+                                           destination_id, self.req)
         return channel_headers, channel_unsubscribe, channel_commands
 
-    def __init__(self, client, user):
+    def __init__(self, client, user, req):
         self.commands_help = {"/help": "Get list of commands",
                               "/join_channel [channel-id]": "Join a specified channel",
                               "/private-channels": "Get a list of your private channels",
@@ -80,3 +83,4 @@ class MainCommands:
 
         self.client = client
         self.user = user
+        self.req = req
