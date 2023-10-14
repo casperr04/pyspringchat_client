@@ -14,14 +14,21 @@ def try_token(token):
 
 
 class User:
-    def __init__(self, username, token=None, user_id=None):
-        self.token = token
-        self.id = user_id
-        self.username = username
 
-    def login(self, password):
-        endpoint = f"{config.config.get('backendurl')}/v1/auth/login"
-        payload = {"username": self.username, "password": password}
+    def __init__(self, config):
+        self.config = config
+        self.endpoint = config.get("backendurl")
+        self.id = None
+        self.token = config.get("token")
+        self.username = config.get("username")
+
+    def login(self, password, passed_user=None):
+        if passed_user is None:
+            username = self.username
+        else:
+            username = passed_user
+        endpoint = f"{self.endpoint}/v1/auth/login"
+        payload = {"username": username, "password": password}
         r = requests.post(endpoint, json=payload)
         if r.status_code != 200:
             raise RequestException('Login failed')
