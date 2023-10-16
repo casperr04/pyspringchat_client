@@ -2,6 +2,8 @@ import sys
 import time
 from requests import RequestException
 from websocket import WebSocketConnectionClosedException
+
+import stomp_ws.commands
 import stomp_ws.util as util
 import stomp_ws.auth as auth
 import logging
@@ -12,17 +14,25 @@ from stomp_ws.frame import Frame
 from requests import exceptions as ex
 
 connected = False
-get_events = False
+get_events = True
 destination_url_prefix = "/app/chat/"
 events = []
 
+
 def program_exit(msg=None, sleep=2):
+    """
+    Exits the program.
+    """
     print(msg)
     time.sleep(sleep)
     sys.exit()
 
 
 def chat_print(frame: Frame):
+    """
+    Callback function to print received chat messages.
+    :param frame: Websocket Frame
+    """
     body = frame.body
     global connected
     if not connected and body.author == 'SERVER' and body.msg == 'pong!':
@@ -36,6 +46,10 @@ def chat_print(frame: Frame):
 
 
 def event_print(frame: Frame):
+    """
+    Callback function to print received events.
+    :param frame: Websocket Frame
+    """
     body = frame.body
     global connected
     if not connected and body.author == 'SERVER' and body.msg == 'pong!':
@@ -53,6 +67,9 @@ def event_print(frame: Frame):
 
 
 def print_title():
+    """
+    Prints ASCII art of the programs title PySpringChat
+    """
     print("  _____        _____            _              _____ _           _   \n"
           " |  __ \      / ____|          (_)            / ____| |         | |  \n"
           " | |__) |   _| (___  _ __  _ __ _ _ __   __ _| |    | |__   __ _| |_ \n"
@@ -64,7 +81,12 @@ def print_title():
 
 
 def register_or_login_menu():
+    """
+    Menu loop that handles logging in and registering an account.
+    """
     while True:
+        util.clear()
+        print_title()
         print("-Welcome to PySpringChat-\n")
         print("Type /register to register a new account\n")
         print("Type /login to login to an existing account\n")
@@ -82,40 +104,64 @@ def register_or_login_menu():
                     return
                 case "/login":
                     username = input("Enter your username:\n")
-                    password = input("Enter your password:\n")
+                    password = input("Enter your password:\n\n")
                     try:
                         return login(username, password)
                     except RequestException as e:
-                        print(str(e))
+                        print("\n" + str(e) + "\n\n")
+                        time.sleep(2)
+                        register_or_login_menu()
                     return
                 case "/exit":
                     program_exit("Goodbye!")
                 case _:
                     print("Invalid command, please try again.")
+            util.clear()
 
 
 def main_menu():
+    """
+    Prints the welcome message
+    """
     print("Welcome! Type /help to see the list of commands!\n")
 
 
 def login(username, password):
-    user = auth.User(config=config_dict)
+    """
+    Attempts to log in a user.
+    :param username:
+    :param password:
+    :return: auth.User object
+    """
+    user = auth.User(config=config)
     user.login(password, username)
     return user
 
 
 def register(username, password):
-    user = auth.User(username)
-    user.register(password)
+    """
+    Attempts to register an user
+    :param username:
+    :param password:
+    :return: auth.User object
+    :return: auth.User object
+    """
+    user = auth.User(config)
+    user.register(username, password)
     return user
 
 
-def channel_loop(channel_headers, channel_unsubscribe, channel_commands):
-    print("\nJoined channel!")
+def channel_loop(channel_headers, channel_unsubscribe, channel_commands, main_menu_commands: stomp_ws.commands.MainCommands):
+    """
+    Handles the chat input and channel commands.
+    :param channel_commands
+    :param main_menu_commands
+    """
+    print("\nJoined channel!\n\n")
     while True:
         try:
             if channel_commands.disconnected:
-                menu_loop()
+                menu_loop(main_menu_commands)
             msg = input("")
             if not channel_commands.command_handler(msg):
                 channel_commands.channel_send(msg)
@@ -126,21 +172,35 @@ def channel_loop(channel_headers, channel_unsubscribe, channel_commands):
             program_exit(sleep=0)
 
 
-def menu_loop():
+def menu_loop(main_menu_commands: stomp_ws.commands.MainCommands):
+    """
+    Loop handling the main menu command handling
+    :param main_menu_commands: MenuCommands object
+    :return:
+    """
+    util.clear()
+    print_title()
     while True:
-        util.clear()
         main_menu()
         inp = input()
-        if inp == "":
-            continue
-        if inp == "/exit":
-            program_exit("Goodbye!", 0)
+        match inp:
+            case '':
+                continue
+            case '/exit':
+                program_exit("Goodbye!", 0)
+            case '/logout':
+                main_menu_commands.command_handler(inp)
+                register_or_login_menu()
         match inp.split()[0]:
             case '/join_channel':
                 try:
                     channel_headers, channel_unsubscribe, channel_commands = main_menu_commands.command_handler(inp)
-                    channel_loop(channel_headers, channel_unsubscribe, channel_commands)
+                    util.clear()
+                    channel_loop(channel_headers, channel_unsubscribe, channel_commands, main_menu_commands)
                 except ex.RequestException:
+                    print("Invalid channel id, try again!")
+                    continue
+                except TypeError:
                     print("Invalid channel id, try again!")
                     continue
         response = main_menu_commands.command_handler(inp)
@@ -150,32 +210,37 @@ def menu_loop():
             print("Invalid command, try again, or type /help to get a list of commands. \n")
 
 
-if __name__ == '__main__':
-    LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+def get_auth():
+    """
+    Handles the authentication of the user, connects them to WebSocket endpoint and subscribes them to the event channel.
+    TODO: encapsulate those two into their own methods
+    """
     config_dict = config.load_config('config.ini')
-    req = requests.Requests(config_dict)
-    print_title()
-    if not req.check_server_status():
-        program_exit("Server is down, try again later or contact the server owner!", 5)
+    req = requests.Requests(config)
 
     # noinspection PyBroadException
+    if not req.check_server_status():
+        program_exit("Server is down, try again later or contact the server owner!", 5)
     try:
         username = auth.try_token(config_dict.get("token"))
         if not username:
             user = register_or_login_menu()
         else:
-            user = auth.User(config=config_dict)
+            user = auth.User(config=config)
+            user.username = username
             user.token = config_dict.get("token")
     # Weird exception chaining, need to catch broad exception for this
     except Exception as e:
-        program_exit("Unable to connect to server, aborting..")
+        program_exit(f"Unable to connect to server, aborting, {e}")
 
     config_object = config.Config(user.token, None, user.username, url='http://localhost:8080',
                                   keep_token=True, config_dict=config_dict)
     config.write_config(config_object)
     config_dict = config.load_config('config.ini')
+    config.config_object = config_object
+    req = requests.Requests(config)
     client = Client("ws://localhost:8080/chat-test", {"Authorization": f"Bearer {config_dict.get('token')}"})
+    main_menu_commands = commands.MainCommands(client, user, req, config)
     client.connect(login="kacper",
                    passcode="45C82C421EBA87C8131E220F878E4145",
                    timeout=0)
@@ -187,6 +252,11 @@ if __name__ == '__main__':
                                                         callback=event_print)
 
     client.send("/app/event", body="PING CHANNEL", headers={"channel": "0"})
+    menu_loop(main_menu_commands)
 
-    main_menu_commands = commands.MainCommands(client, user, req)
-    menu_loop()
+
+if __name__ == '__main__':
+    LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    config_dict = config.load_config('config.ini')
+    get_auth()
