@@ -35,7 +35,7 @@ class Requests:
         :param channel_id:
         :return:
         """
-        endpoint = f"{self.backendurl}/v1/channels/check/private-channel/{channel_id}"
+        endpoint = f"{self.backendurl}/v1/channels/private-channel/check/{channel_id}"
         r = requests.get(endpoint, headers=self.auth)
         if r.status_code != 200:
             return False
@@ -48,7 +48,7 @@ class Requests:
         :param username: Username of a friended user to create a private channel with.
         :return:
         """
-        endpoint = f"{self.backendurl}/v1/channels/create/private-channel/{username}"
+        endpoint = f"{self.backendurl}/v1/channels/private-channel/create/{username}"
         r = requests.post(endpoint, headers=self.auth)
         if r.status_code != 200:
             try:
@@ -70,3 +70,11 @@ class Requests:
             raise ex.RequestException("\nCouldn't send friend request\n")
         else:
             return True
+
+    def private_channels(self) -> list:
+        endpoint = f"{self.backendurl}/v1/channels/private-channel"
+        r = requests.get(endpoint, headers=self.auth)
+        if r.status_code == 404:
+            raise ex.RequestException("\nCouldn't send friend request\n")
+        else:
+            return json.loads(r.text)

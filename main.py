@@ -3,7 +3,6 @@ import time
 from requests import RequestException
 from websocket import WebSocketConnectionClosedException
 
-import stomp_ws.commands
 import stomp_ws.util as util
 import stomp_ws.auth as auth
 import logging
@@ -151,7 +150,7 @@ def register(username, password):
     return user
 
 
-def channel_loop(channel_headers, channel_unsubscribe, channel_commands, main_menu_commands: stomp_ws.commands.MainCommands):
+def channel_loop(channel_headers, channel_unsubscribe, channel_commands, main_menu_commands):
     """
     Handles the chat input and channel commands.
     :param channel_commands
@@ -172,7 +171,7 @@ def channel_loop(channel_headers, channel_unsubscribe, channel_commands, main_me
             program_exit(sleep=0)
 
 
-def menu_loop(main_menu_commands: stomp_ws.commands.MainCommands):
+def menu_loop(main_menu_commands):
     """
     Loop handling the main menu command handling
     :param main_menu_commands: MenuCommands object

@@ -3,7 +3,7 @@ import configparser
 # Create a global configuration dictionary
 config = {}
 parser = configparser.ConfigParser(allow_no_value=True)
-
+config_object = None
 
 class Config:
     def __init__(self, token=None, refresh=None, username=None, url=None, keep_token=None, config_dict=None):
@@ -13,6 +13,7 @@ class Config:
         self.url = url
         self.config_dict = config_dict
         self.keep_token = keep_token if isinstance(keep_token, bool) else False
+        self.config_object = None
 
 
 # Function to read and load the configuration file

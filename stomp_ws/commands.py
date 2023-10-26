@@ -1,13 +1,17 @@
+import json
+
 from requests import exceptions
 import stomp_ws.exception as ex
 import main
 import stomp_ws.config as conf
+import stomp_ws.util as util
 
 
 class ChannelCommands:
     """
     Class for handling the commands while in a channel
     """
+
     def channel_send(self, msg):
         """
         Sends a message to the currently connected channel.
@@ -66,6 +70,7 @@ class MainCommands:
     """
     Class for handling main menu commands and executing them.
     """
+
     def command_handler(self, command: str):
         """
         Parses and executes a given command
@@ -151,14 +156,33 @@ class MainCommands:
         except ex.RequestException as e:
             print(e)
 
+    def private_channels(self):
+        try:
+            for channel in self.req.private_channels():
+                if channel["usersInChannel"][0]["name"] != self.user.username:
+                    user = channel["usersInChannel"][0]["name"]
+                else:
+                    user = channel["usersInChannel"][1]["name"]
+                print("\n------------")
+                print(f"CHANNEL ID: {channel['channelId']}\n")
+                print(f"USER: {user}\n")
+
+        except ex.RequestException as e:
+            print(e)
+
+    def clear(self):
+        util.clear()
+        return True
+
     def __init__(self, client, user, req, config):
         self.commands_help = {"/help": "Get list of commands",
-                              "/private-channels": "Get a list of your private channels",
+                              "/private_channels": "Get a list of your private channels",
                               "/friend_request [username]": "Sends a friend request to user",
                               "/create_channel [username]": "Create a private channel with a friend by his username",
                               "/join_channel [channel-id]": "Join a specified channel",
-                              "/user-info [user-id]": "Get info about a user",
+                              "/user_info [user-id]": "Get info about a user",
                               "/logout": "Logs you out",
+                              "/clear": "Clears the terminal",
                               "/exit": "Exits PySpringChat"}
         # "/private_channels": self.private_channels,
         # "/user_info": self.user_info,
@@ -171,4 +195,6 @@ class MainCommands:
                          "/join_channel": self.join_channel,
                          "/logout": self.logout,
                          "/create_channel": self.create_channel,
-                         "/friend_request": self.friend_request}
+                         "/friend_request": self.friend_request,
+                         "/private_channels": self.private_channels,
+                         "/clear": self.clear}
